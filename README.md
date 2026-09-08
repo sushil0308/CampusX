@@ -1,6 +1,6 @@
 # CampusX | Next-Gen University Placement & Recruitment Platform
 
-A production-style, full-stack **Campus Placement & Recruitment Platform** engineered for universities, corporate recruiters, placement officers, and students. Built with a clean layered architecture using **Java 21/22, Spring Boot 3, Spring Security with JWT, PostgreSQL/H2 hybrid, Hibernate, Bean Validation**, and a modern, high-aesthetic **React 18 + Vite + Tailwind CSS** frontend.
+A production-grade, full-stack **Campus Placement & Recruitment Platform** engineered for universities, corporate recruiters, placement officers, and students. Built with a clean layered architecture using **Java 21, Spring Boot 3, Spring Security 6 with JWT, PostgreSQL (Production) / H2 (Development), Hibernate 6, Bean Validation**, and a modern **React 18 + Vite + Tailwind CSS** frontend.
 
 ---
 
@@ -56,13 +56,13 @@ The application includes an instant **Quick Demo Role Switcher** in the top navi
 ## 🛠️ Architecture & Tech Stack
 
 ### Backend
-- **Language**: Java 21 / 22
+- **Language**: Java 21
 - **Framework**: Spring Boot 3.3.3
 - **Security**: Spring Security 6 with stateless JWT authentication (`io.jsonwebtoken:jjwt-api:0.12.6`) and BCrypt password hashing
 - **Persistence**: Spring Data JPA & Hibernate 6.5
-- **Database**:
-  - **Embedded In-Memory Mode (Default)**: H2 in PostgreSQL compatibility mode (`jdbc:h2:mem:campusx_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL`) for instant zero-configuration local evaluation.
-  - **Live PostgreSQL Mode**: Included `application-postgres.properties` configured for PostgreSQL 14/15/16. Switch with `--spring.profiles.active=postgres`.
+- **Databases**:
+  - **Local Development Mode (`dev`)**: Embedded H2 database in PostgreSQL compatibility mode with zero setup required.
+  - **Production Mode (`prod`)**: Live PostgreSQL database configured dynamically via environment variables (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`).
 - **Validation**: Jakarta Bean Validation (`@Valid`, `@NotBlank`, `@Email`, `@Min`, `@NotNull`)
 - **API Design**: Standardized envelope pattern (`ApiResponse<T>`) with `@RestControllerAdvice` global exception handler
 
@@ -75,31 +75,143 @@ The application includes an instant **Quick Demo Role Switcher** in the top navi
 
 ---
 
-## 🏃 Running Locally
+## ⚙️ Environment Variables Reference
+
+### Backend Environment Variables
+
+| Variable | Required in Prod | Default (Dev) | Description |
+| :--- | :--- | :--- | :--- |
+| `SPRING_PROFILES_ACTIVE` | Yes | `dev` | Application profile: `dev` for in-memory H2, `prod` for PostgreSQL. |
+| `PORT` | Auto on Render | `8080` | Port on which the Spring Boot server listens. |
+| `DB_URL` | Yes (in `prod`) | N/A | PostgreSQL JDBC connection URL (e.g. `jdbc:postgresql://<host>:<port>/<dbname>`). |
+| `DB_USERNAME` | Yes (in `prod`) | N/A | PostgreSQL database username. |
+| `DB_PASSWORD` | Yes (in `prod`) | N/A | PostgreSQL database password. |
+| `JWT_SECRET` | Recommended | Built-in Dev Secret | 256-bit or 512-bit secure secret key for signing authentication tokens. |
+| `JWT_EXPIRATION_MS` | No | `86400000` (24 hours) | JWT token lifespan in milliseconds. |
+| `CORS_ALLOWED_ORIGINS` | Recommended | `*` | Comma-separated list of allowed frontend origins (e.g. `https://campusx-frontend.onrender.com,http://localhost:5173`). |
+
+### Frontend Environment Variables
+
+| Variable | Required in Prod | Default (Dev) | Description |
+| :--- | :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | Yes (in `prod`) | `/api` | Base URL for API requests (e.g. `https://campusx-backend.onrender.com/api`). In local development, defaults to `/api` which is proxied by Vite. |
+
+---
+
+## 🏃 Local Development Setup
 
 ### Prerequisites
-- Java 21 or Java 22 installed (`java -version`)
-- Maven 3.9+ (`mvn -version`)
-- Node.js 18+ and npm (`node -v`, `npm -v`)
+- Java 21 installed (`java -version`)
+- Maven 3.9+ installed (`mvn -version`)
+- Node.js 18+ and npm installed (`node -v`, `npm -v`)
 
-### 1. Start the Spring Boot Backend
-Open a terminal in the `backend/` directory:
-```bash
-cd backend
-mvn package -DskipTests
-java -jar target/campusx-backend-1.0.0.jar
-```
-*The backend starts at `http://localhost:8080/` and automatically seeds demo accounts, companies, drives, and applications.*
-*(H2 Web Console is available at `http://localhost:8080/h2-console` with JDBC URL `jdbc:h2:mem:campusx_db` and user `campusx` / password `campusx_secret`)*
+### Option A: Quick Start with In-Memory Database (Zero Config)
 
-### 2. Start the React Frontend
-Open a second terminal in the `frontend/` directory:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-*The frontend starts at `http://localhost:5173/` and proxies all `/api` requests to Spring Boot on port 8080.*
+1. **Start Backend (Dev Profile - H2)**:
+   ```bash
+   cd backend
+   mvn clean package -DskipTests
+   java -jar target/campusx-backend-1.0.0.jar
+   ```
+   *The backend starts at `http://localhost:8080/` and automatically seeds demo data.*
+   *(H2 Console available at `http://localhost:8080/h2-console`)*
+
+2. **Start Frontend (Vite Dev Server)**:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   *The frontend starts at `http://localhost:5173/` and proxies all `/api` requests to Spring Boot.*
+
+### Option B: Local Development with PostgreSQL
+
+1. **Ensure PostgreSQL is running locally** and create the database:
+   ```sql
+   CREATE DATABASE campusx_db;
+   ```
+
+2. **Run Backend with `prod` or `postgres` profile**:
+   ```bash
+   cd backend
+   mvn clean package -DskipTests
+   java -Dspring.profiles.active=prod -DDB_URL=jdbc:postgresql://localhost:5432/campusx_db -DDB_USERNAME=postgres -DDB_PASSWORD=your_password -jar target/campusx-backend-1.0.0.jar
+   ```
+
+---
+
+## ☁️ Production Deployment on Render
+
+You can deploy the complete platform on [Render](https://render.com) using either **1-Click Blueprint (`render.yaml`)** or **Manual Service Setup**.
+
+### Method 1: 1-Click Render Blueprint (`render.yaml`)
+
+1. Fork or push this repository to GitHub.
+2. Go to **Render Dashboard** -> **Blueprints** -> **New Blueprint Instance**.
+3. Connect your repository. Render will automatically detect `render.yaml` and configure:
+   - **PostgreSQL Database** (`campusx-postgres`)
+   - **Backend Web Service** (`campusx-backend`)
+   - **Frontend Static Site** (`campusx-frontend`)
+4. Click **Apply** to deploy all components automatically!
+
+---
+
+### Method 2: Manual Step-by-Step Deployment on Render
+
+#### Step 1: Create PostgreSQL Database on Render
+1. Go to **Render Dashboard** -> **New +** -> **PostgreSQL**.
+2. Set Name: `campusx-postgres`
+3. Set Database: `campusx_db`
+4. Set User: `campusx`
+5. Select the **Free** instance type.
+6. Click **Create Database**.
+7. Once provisioned, note the:
+   - **Internal Database URL** (e.g. `postgres://campusx:password@dpg-xxxx-a:5432/campusx_db`)
+   - **User**: `campusx`
+   - **Password**: `<generated-password>`
+   - **Host / Database Name**
+
+> **Note on JDBC URL Format**: Spring Boot JDBC requires the `jdbc:postgresql://` prefix. For example:
+> `jdbc:postgresql://dpg-xxxx-a:5432/campusx_db` (or with external host `jdbc:postgresql://dpg-xxxx-a.oregon-postgres.render.com:5432/campusx_db?sslmode=require`)
+
+#### Step 2: Deploy Backend Web Service on Render
+1. Go to **Render Dashboard** -> **New +** -> **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the service:
+   - **Name**: `campusx-backend`
+   - **Language / Runtime**: `Java` (or `Docker`)
+   - **Root Directory**: `backend`
+   - **Build Command**: `mvn clean package -DskipTests`
+   - **Start Command**: `java -jar target/campusx-backend-1.0.0.jar`
+   - **Instance Type**: `Free`
+4. Add **Environment Variables**:
+   | Key | Value |
+   | :--- | :--- |
+   | `SPRING_PROFILES_ACTIVE` | `prod` |
+   | `DB_URL` | `jdbc:postgresql://<render-db-host>:5432/campusx_db` |
+   | `DB_USERNAME` | `campusx` |
+   | `DB_PASSWORD` | `<your-render-db-password>` |
+   | `JWT_SECRET` | `<generate-a-random-32+-character-secret>` |
+   | `CORS_ALLOWED_ORIGINS` | `*` (or your frontend Render URL once created) |
+5. Click **Create Web Service**. Your backend will deploy at `https://campusx-backend.onrender.com`.
+
+#### Step 3: Deploy Frontend Static Site on Render
+1. Go to **Render Dashboard** -> **New +** -> **Static Site**.
+2. Connect your GitHub repository.
+3. Configure the site:
+   - **Name**: `campusx-frontend`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+4. Add **Environment Variables**:
+   | Key | Value |
+   | :--- | :--- |
+   | `VITE_API_BASE_URL` | `https://campusx-backend.onrender.com/api` |
+5. Add **Redirects / Rewrites** (under Static Site Settings):
+   - **Type**: `Rewrite`
+   - **Source**: `/*`
+   - **Destination**: `/index.html`
+6. Click **Create Static Site**. Your frontend will deploy at `https://campusx-frontend.onrender.com`.
 
 ---
 
